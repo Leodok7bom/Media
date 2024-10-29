@@ -1,0 +1,123 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game.CoreGui
+
+local Button = Instance.new("TextButton")
+Button.Parent = ScreenGui
+Button.Text = "FakeLag Desativado"
+Button.Position = UDim2.new(0.5, -50, 0.5, -25)
+Button.Size = UDim2.new(0, 100, 0, 50)
+Button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0.5, 0)
+UICorner.Parent = Button
+
+local isLagging = false
+local anchoredPlayers = {}
+local typingInChat = false
+
+local function activateLag()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local character = player.Character
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                local humanoidRootPart = character.HumanoidRootPart
+                humanoidRootPart.Anchored = true
+                anchoredPlayers[player.UserId] = true
+            end
+        end
+    end
+end
+
+local function deactivateLag()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and anchoredPlayers[player.UserId] then
+            local character = player.Character
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                local humanoidRootPart = character.HumanoidRootPart
+                humanoidRootPart.Anchored = false
+            end
+        end
+    end
+    anchoredPlayers = {}
+end
+
+local function toggleLag()
+    isLagging = not isLagging
+    if isLagging then
+        Button.Text = "FakeLag Ativado"
+        Button.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        activateLag()
+    else
+        Button.Text = "FakeLag Desativado"
+        Button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+        deactivateLag()
+    end
+end
+
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.E and not typingInChat then
+        toggleLag()
+    end
+end)
+
+Button.MouseButton1Click:Connect(toggleLag)
+
+UserInputService.TextBoxFocused:Connect(function()
+    typingInChat = true
+end)
+
+UserInputService.TextBoxFocusReleased:Connect(function()
+    typingInChat = false
+end)
+
+
+local dragging, dragStart, startPos
+
+local function updateDrag(input)
+    local delta = input.Position - dragStart
+    Button.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+Button.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = Button.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+Button.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        updateDrag(input)
+    end
+end)
+
+
+RunService.RenderStepped:Connect(function()
+    if dragging then
+        UserInputService.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
+    else
+        UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+    end
+end)
+
+local function onCharacterAdded(character)
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        local humanoidRootPart = character.HumanoidRootPart
+        humanoidRootPart.Anchored = false
+    end
+end
+
+LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
